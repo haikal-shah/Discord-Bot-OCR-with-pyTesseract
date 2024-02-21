@@ -9,13 +9,15 @@ from PIL import Image
 import pytesseract
 # HTTP/1.1 requests
 import requests
+# Perform input/output
+import io
 
 # Set the path to the Tesseract executable, this is the default
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 load_dotenv()
 # Insert token
-TOKEN = "DISCORD_TOKEN"
+TOKEN = "{insert your token here}"
 # Change to whatever prefix you want
 PREFIX = "!"
 
@@ -34,21 +36,28 @@ async def on_ready():
 # Change the command here
 @bot.command(name='ocr')
 async def ocr_command(ctx):
-    # Check if an image is attached
+    # Check if images are attached
     if len(ctx.message.attachments) == 0:
         await ctx.send("Please attach an image.")
         return
 
-    # Get the first attached image
-    image_url = ctx.message.attachments[0].url
+    ocr_results = []  # List to store OCR results for each image
 
-    # Download the image, don't worry, it does not save the images it's for tesseract to process them
-    image = Image.open(requests.get(image_url, stream=True).raw)
+    for attachment in ctx.message.attachments:
+        image_url = attachment.url
 
-    # Perform OCR using pytesseract
-    text = pytesseract.image_to_string(image)
+        # Get image. don't worry, it does not save the images it's for tesseract to process them
+        image_bytes = await attachment.read()
+        image = Image.open(io.BytesIO(image_bytes))
 
-    # Send the OCR result
-    await ctx.send(f"OCR Result:\n```{text}```")
+        # Perform OCR using pytesseract
+        text = pytesseract.image_to_string(image)
+        ocr_results.append(text)
+
+    # Combine OCR results into a single message
+    combined_text = "\n\n".join(f"OCR Result for Image {i + 1}:\n{text}" for i, text in enumerate(ocr_results))
+
+    # Send the OCR results
+    await ctx.send(combined_text)
 
 bot.run(TOKEN)
